@@ -31,9 +31,14 @@ jobs:
 
       - name: Restore and Run Brain Simulation
         run: |
-          # Move todos os fragmentos existentes (.dat) para a pasta build para o simulador ler
           mkdir -p build
-          cp brain_part_*.dat build/ 2>/dev/null || echo "Nenhum fragmento anterior encontrado."
+          # Ajustado para o nome correto: brain_state_part_*.dat
+          if ls brain_state_part_*.dat 1> /dev/null 2>&1; then
+            cp brain_state_part_*.dat build/
+            echo "Fragmentos anteriores restaurados com sucesso."
+          else
+            echo "Nenhum fragmento anterior encontrado. Iniciando do zero."
+          fi
           
           cd build
           ./LlucsBrain
@@ -43,10 +48,15 @@ jobs:
           git config --global user.name "LlucsBrain Bot"
           git config --global user.email "llucs@brain.evolution"
           
-          # Move os novos fragmentos gerados na build para a raiz do repositório
-          cp build/brain_part_*.dat . || echo "Erro: Nenhum fragmento gerado!"
+          # Move os novos fragmentos (brain_state_part_*.dat) para a raiz
+          if ls build/brain_state_part_*.dat 1> /dev/null 2>&1; then
+            cp build/brain_state_part_*.dat .
+          else
+             echo "Erro: O simulador não gerou os arquivos de estado!"
+             exit 1
+          fi
 
-          # Adiciona todos os fragmentos (ex: brain_part_0.dat, brain_part_1.dat...)
-          git add brain_part_*.dat
+          # Adiciona todos os fragmentos ao Git
+          git add brain_state_part_*.dat
           git commit -m "Evolução diária fragmentada - Desenvolvido por Llucs" || echo "Sem mudanças no cérebro."
           git push
