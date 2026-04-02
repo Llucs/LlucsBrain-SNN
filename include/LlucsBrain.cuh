@@ -5,15 +5,6 @@
 #ifndef LLUCS_BRAIN_CUH
 #define LLUCS_BRAIN_CUH
 
-#ifdef USE_CUDA
-#include <cuda_runtime.h>
-#include <curand_kernel.h>
-#else
-#define __global__
-#define __device__
-#define __host__
-#endif
-
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -47,7 +38,7 @@ struct Neuron {
     bool fired;             // Flag de disparo no passo atual
 };
 
-// Estrutura de Sinapse (Matriz Esparsa em Formato COO para GPU)
+// Estrutura de Sinapse (Matriz Esparsa em Formato COO)
 struct Synapse {
     uint32_t src_idx;       // Índice do neurônio pré-sináptico
     uint32_t dst_idx;       // Índice do neurônio pós-sináptico
@@ -56,7 +47,7 @@ struct Synapse {
     float last_post_spike;  // Tempo do último spike pós-sináptico (para STDP)
 };
 
-// Kernels CUDA / Funções CPU
+// Funções do Motor (Paralelizadas com OpenMP)
 void update_neurons(Neuron* neurons, float* external_current, SimulationParams params, float current_time, uint32_t num_neurons);
 void process_spikes(Neuron* neurons, Synapse* synapses, uint32_t num_synapses, SimulationParams params);
 void apply_stdp(Neuron* neurons, Synapse* synapses, uint32_t num_synapses, SimulationParams params, float current_time);
