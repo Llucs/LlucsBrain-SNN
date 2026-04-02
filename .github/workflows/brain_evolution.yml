@@ -8,9 +8,14 @@ on:
 jobs:
   evolve:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Permissão necessária para o bot fazer o push das mudanças
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          persist-credentials: true
 
       - name: Install Dependencies
         run: |
@@ -27,13 +32,21 @@ jobs:
       - name: Run Brain Simulation
         run: |
           cd build
+          # Executa o simulador do Llucs
           ./LlucsBrain
 
       - name: Commit and Push Brain State
         run: |
+          # Configura o Bot do Llucs
           git config --global user.name "LlucsBrain Bot"
           git config --global user.email "llucs@brain.evolution"
-          git add brain_state.dat
-          git commit -m "Evolução diária do cérebro - Desenvolvido por Llucs" || echo "Nenhuma mudança no estado do cérebro."
-          git push
           
+          # Move o arquivo da pasta build para a raiz para o Git encontrar
+          if [ -f build/brain_state.dat ]; then
+            cp build/brain_state.dat .
+          fi
+
+          # Adiciona, commita e envia a evolução
+          git add brain_state.dat
+          git commit -m "Evolução diária do cérebro - Desenvolvido por Llucs" || echo "Nenhuma mudança detectada no estado do cérebro."
+          git push
