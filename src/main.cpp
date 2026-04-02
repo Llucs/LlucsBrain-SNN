@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
     const uint32_t num_neurons = 1000000;
     const uint32_t num_synapses = 10000000;
     const int num_steps = 1000;
-    const std::string checkpoint_file = "brain_state.dat";
+    const std::string brain_base_name = "brain_state";
 
     SimulationParams params;
     params.dt = 1.0f;
@@ -32,16 +32,16 @@ int main(int argc, char** argv) {
     params.w_max = 1.0f;
     params.w_min = 0.0f;
 
-    std::cout << "LlucsBrain Engine - Evolução Automatizada (CPU OpenMP)" << std::endl;
-    std::cout << "Threads OpenMP disponíveis: " << omp_get_max_threads() << std::endl;
+    std::cout << "LlucsBrain Engine - Estratégia de Cérebro Fragmentado" << std::endl;
+    std::cout << "Threads OpenMP: " << omp_get_max_threads() << std::endl;
 
     std::vector<Neuron> h_neurons;
     std::vector<Synapse> h_synapses;
     std::vector<float> h_external_current(num_neurons);
 
-    // Tentar carregar checkpoint existente
-    if (!load_checkpoint(checkpoint_file, h_neurons, h_synapses)) {
-        std::cout << "Nenhum checkpoint encontrado. Inicializando nova rede..." << std::endl;
+    // Tentar carregar cérebro a partir de fragmentos
+    if (!load_brain_fragmented(brain_base_name, h_neurons, h_synapses)) {
+        std::cout << "Nenhum fragmento encontrado. Inicializando nova rede de 1M neurônios..." << std::endl;
         h_neurons.resize(num_neurons);
         h_synapses.resize(num_synapses);
 
@@ -67,26 +67,20 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Inicializar corrente externa aleatória para cada execução
+    // Corrente externa aleatória
     std::mt19937 gen_curr(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<float> dist_curr(0.0f, 15.0f);
     for (uint32_t i = 0; i < num_neurons; ++i) {
         h_external_current[i] = dist_curr(gen_curr);
     }
 
-    std::cout << "Executando simulação paralela em CPU..." << std::endl;
+    std::cout << "Iniciando simulação..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     
     for (int step = 0; step < num_steps; ++step) {
         float current_time = step * params.dt;
-        
-        // 1. Atualizar Neurônios (LIF)
         update_neurons(h_neurons.data(), h_external_current.data(), params, current_time, num_neurons);
-        
-        // 2. Processar Spikes (Propagação Sináptica)
         process_spikes(h_neurons.data(), h_synapses.data(), num_synapses, params);
-        
-        // 3. Aplicar Aprendizado (STDP)
         apply_stdp(h_neurons.data(), h_synapses.data(), num_synapses, params, current_time);
 
         if (step % 100 == 0) {
@@ -98,8 +92,9 @@ int main(int argc, char** argv) {
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Simulação finalizada em " << elapsed.count() << " segundos." << std::endl;
 
-    // Salvar estado final
-    save_checkpoint(checkpoint_file, h_neurons, h_synapses);
+    // Salvar estado em fragmentos de 50 MB para compatibilidade com GitHub
+    std::cout << "Salvando estado fragmentado..." << std::endl;
+    save_brain_fragmented(brain_base_name, h_neurons, h_synapses, 50);
 
     return 0;
 }
