@@ -8,6 +8,7 @@
 #include <random>
 #include <chrono>
 #include <filesystem>
+#include <omp.h>
 
 int main(int argc, char** argv) {
     const uint32_t num_neurons = 1000000;
@@ -31,7 +32,8 @@ int main(int argc, char** argv) {
     params.w_max = 1.0f;
     params.w_min = 0.0f;
 
-    std::cout << "LlucsBrain Engine - Evolução Automatizada" << std::endl;
+    std::cout << "LlucsBrain Engine - Evolução Automatizada (CPU OpenMP)" << std::endl;
+    std::cout << "Threads OpenMP disponíveis: " << omp_get_max_threads() << std::endl;
 
     std::vector<Neuron> h_neurons;
     std::vector<Synapse> h_synapses;
@@ -72,48 +74,27 @@ int main(int argc, char** argv) {
         h_external_current[i] = dist_curr(gen_curr);
     }
 
-#ifdef USE_CUDA
-    std::cout << "Executando em modo GPU (CUDA)..." << std::endl;
-    Neuron* d_neurons;
-    Synapse* d_synapses;
-    float* d_external_current;
-    cudaMalloc(&d_neurons, num_neurons * sizeof(Neuron));
-    cudaMalloc(&d_synapses, num_synapses * sizeof(Synapse));
-    cudaMalloc(&d_external_current, num_neurons * sizeof(float));
-
-    cudaMemcpy(d_neurons, h_neurons.data(), num_neurons * sizeof(Neuron), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_synapses, h_synapses.data(), num_synapses * sizeof(Synapse), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_external_current, h_external_current.data(), num_neurons * sizeof(float), cudaMemcpyHostToDevice);
-
+    std::cout << "Executando simulação paralela em CPU..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
+    
     for (int step = 0; step < num_steps; ++step) {
         float current_time = step * params.dt;
-        update_neurons(d_neurons, d_external_current, params, current_time, num_neurons);
-        process_spikes(d_neurons, d_synapses, num_synapses, params);
-        apply_stdp(d_neurons, d_synapses, num_synapses, params, current_time);
-    }
-    cudaDeviceSynchronize();
-    auto end = std::chrono::high_resolution_clock::now();
-
-    cudaMemcpy(h_neurons.data(), d_neurons, num_neurons * sizeof(Neuron), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_synapses.data(), d_synapses, num_synapses * sizeof(Synapse), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_neurons);
-    cudaFree(d_synapses);
-    cudaFree(d_external_current);
-#else
-    std::cout << "Executando em modo CPU (Fallback)..." << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int step = 0; step < num_steps; ++step) {
-        float current_time = step * params.dt;
+        
+        // 1. Atualizar Neurônios (LIF)
         update_neurons(h_neurons.data(), h_external_current.data(), params, current_time, num_neurons);
+        
+        // 2. Processar Spikes (Propagação Sináptica)
         process_spikes(h_neurons.data(), h_synapses.data(), num_synapses, params);
+        
+        // 3. Aplicar Aprendizado (STDP)
         apply_stdp(h_neurons.data(), h_synapses.data(), num_synapses, params, current_time);
-        if (step % 100 == 0) std::cout << "Passo " << step << " concluído." << std::endl;
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-#endif
 
+        if (step % 100 == 0) {
+            std::cout << "Passo " << step << "/" << num_steps << " concluído." << std::endl;
+        }
+    }
+    
+    auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Simulação finalizada em " << elapsed.count() << " segundos." << std::endl;
 
