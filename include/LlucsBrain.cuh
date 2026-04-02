@@ -52,8 +52,8 @@ void update_neurons(Neuron* neurons, float* external_current, SimulationParams p
 void process_spikes(Neuron* neurons, Synapse* synapses, uint32_t num_synapses, SimulationParams params);
 void apply_stdp(Neuron* neurons, Synapse* synapses, uint32_t num_synapses, SimulationParams params, float current_time);
 
-// Persistência de Dados
-void save_checkpoint(const std::string& filename, const std::vector<Neuron>& neurons, const std::vector<Synapse>& synapses);
-bool load_checkpoint(const std::string& filename, std::vector<Neuron>& neurons, std::vector<Synapse>& synapses);
+// Persistência de Dados Fragmentada (Cérebro Fragmentado)
+void save_brain_fragmented(const std::string& base_filename, const std::vector<Neuron>& neurons, const std::vector<Synapse>& synapses, size_t max_file_size_mb = 50);
+bool load_brain_fragmented(const std::string& base_filename, std::vector<Neuron>& neurons, std::vector<Synapse>& synapses);
 
 #endif // LLUCS_BRAIN_CUH
