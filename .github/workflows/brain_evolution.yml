@@ -1,9 +1,9 @@
-name: LlucsBrain Evolution (Gzip Mode)
+name: LlucsBrain Evolution (Fragmented)
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Executa diariamente à meia-noite
-  workflow_dispatch: # Permite execução manual
+    - cron: '0 0 * * *' # Todo dia à meia-noite
+  workflow_dispatch:
 
 jobs:
   evolve:
@@ -20,7 +20,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libomp-dev gzip
+          sudo apt-get install -y build-essential cmake libomp-dev
 
       - name: Configure and Build
         run: |
@@ -31,32 +31,22 @@ jobs:
 
       - name: Restore and Run Brain Simulation
         run: |
-          cd build
-          # Se existir um estado salvo compactado (.gz), descompacta para o simulador ler o .dat
-          if [ -f ../brain_state.dat.gz ]; then
-            gunzip -c ../brain_state.dat.gz > brain_state.dat
-            echo "Estado anterior restaurado com sucesso."
-          else
-            echo "Nenhum estado anterior encontrado. Iniciando cérebro do zero."
-          fi
+          # Move todos os fragmentos existentes (.dat) para a pasta build para o simulador ler
+          mkdir -p build
+          cp brain_part_*.dat build/ 2>/dev/null || echo "Nenhum fragmento anterior encontrado."
           
-          # Executa o simulador do Llucs
+          cd build
           ./LlucsBrain
 
-      - name: Commit and Push Brain State
+      - name: Commit and Push Brain Fragments
         run: |
-          # Configura o Bot do Llucs
           git config --global user.name "LlucsBrain Bot"
           git config --global user.email "llucs@brain.evolution"
           
-          # Compacta o novo estado (220MB -> ~60MB) para caber no limite de 100MB do GitHub
-          if [ -f build/brain_state.dat ]; then
-            gzip -9 -c build/brain_state.dat > brain_state.dat.gz
-            # Remove o .dat original para o Git não tentar subir ele por engano
-            rm build/brain_state.dat
-          fi
+          # Move os novos fragmentos gerados na build para a raiz do repositório
+          cp build/brain_part_*.dat . || echo "Erro: Nenhum fragmento gerado!"
 
-          # Adiciona o arquivo compactado e as configurações
-          git add brain_state.dat.gz
-          git commit -m "Evolução diária (Compactada) - Desenvolvido por Llucs" || echo "Nenhuma mudança detectada."
+          # Adiciona todos os fragmentos (ex: brain_part_0.dat, brain_part_1.dat...)
+          git add brain_part_*.dat
+          git commit -m "Evolução diária fragmentada - Desenvolvido por Llucs" || echo "Sem mudanças no cérebro."
           git push
